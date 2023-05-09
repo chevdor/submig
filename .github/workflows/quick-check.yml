@@ -47,14 +47,14 @@ jobs:
       - name: Cargo fmt
         uses: actions-rs/cargo@v1
         with:
-          toolchain: nithly
+          toolchain: nightly
           command: fmt
           args: --all -- --check
 
       - name: Cargo clippy
         uses: actions-rs/cargo@v1
         with:
-          toolchain: nithly
+          toolchain: nightly
           command: clippy
           args: --tests -- -D warnings
 
