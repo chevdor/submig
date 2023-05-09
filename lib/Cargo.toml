@@ -15,3 +15,4 @@ repository = "https://github.com/Chevdor/submig"
 [dependencies]
 anyhow = "1.0.71"
 syn = { version = "2.0.15", features = ["parsing", "full", "extra-traits"] }
+log = "0.4"

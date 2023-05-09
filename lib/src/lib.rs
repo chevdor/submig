@@ -1,4 +1,5 @@
 use anyhow::Result;
+use log::debug;
 use std::{collections::HashMap, fs, path::PathBuf, process::Command, str::from_utf8};
 use syn::{
 	Ident, Item, ItemType,
@@ -77,6 +78,7 @@ pub fn find(repo: &PathBuf) -> Result<HashMap<PathBuf, Vec<Migration>>> {
 		let hits: Vec<&Item> =
 			syntax.items.iter().filter(|&item| matches!(item, syn::Item::Type(i) if i.ident == "Migrations")).collect();
 
+		debug!("Found {} hits", hits.len());
 		assert!(hits.len() == 1);
 		let hit = hits.first().unwrap();
 
