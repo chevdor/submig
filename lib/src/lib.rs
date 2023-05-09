@@ -30,7 +30,11 @@ pub fn get_files(repo: &PathBuf) -> Result<Vec<PathBuf>> {
 				.collect();
 			Ok(arr)
 		}
-		Err(_) => todo!(),
+		Err(e) => {
+			eprint!("{repo:?}");
+			eprint!("{e:?}");
+			todo!()
+		}
 	}
 }
 
@@ -88,18 +92,33 @@ pub fn find(repo: &PathBuf) -> Result<HashMap<PathBuf, Vec<Migration>>> {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	const PROJECT_DIR_POLKADOT: &str = "/projects/polkadot";
-	const PROJECT_DIR_CUMULUS: &str = "/projects/cumulus";
+	use std::env;
+
+	fn setup() {
+		let polkadot_repo: &str = &env::var("POLKADOT_REPO").unwrap_or_default();
+		if polkadot_repo.is_empty() {
+			env::set_var("POLKADOT_REPO", "/projects/polkadot");
+		}
+
+		let cumulus_repo: &str = &env::var("CUMULUS_REPO").unwrap_or_default();
+		if cumulus_repo.is_empty() {
+			env::set_var("CUMULUS_REPO", "/projects/cumulus");
+		}
+	}
 
 	#[test]
 	fn it_find_files() {
-		let result = get_files(&PathBuf::from(PROJECT_DIR_POLKADOT)).unwrap();
+		setup();
+		let polkadot_repo: &str = &env::var("POLKADOT_REPO").unwrap();
+		let result = get_files(&PathBuf::from(polkadot_repo)).unwrap();
 		assert!(result.len() == 4);
 	}
 
 	#[test]
 	fn it_finds_migrations_polkadot() {
-		let result = find(&PathBuf::from(PROJECT_DIR_POLKADOT)).unwrap();
+		setup();
+		let polkadot_repo: &str = &env::var("POLKADOT_REPO").unwrap();
+		let result = find(&PathBuf::from(polkadot_repo)).unwrap();
 		assert!(result.len() == 4);
 		println!("result = {:?}", result);
 	}
@@ -107,7 +126,9 @@ mod tests {
 	#[test]
 	#[ignore = "Migration were not updated in Cumulus yet"]
 	fn it_finds_migrations_cumulus() {
-		let result = find(&PathBuf::from(PROJECT_DIR_CUMULUS)).unwrap();
+		setup();
+		let cumulus_repo: &str = &env::var("CUMULUS_REPO").unwrap();
+		let result = find(&PathBuf::from(cumulus_repo)).unwrap();
 		assert!(result.is_empty()); // The migration fix was not done yet
 		println!("result = {:?}", result);
 	}

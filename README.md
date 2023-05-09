@@ -2,6 +2,10 @@
 
 `submig` is an experimental project aiming at finding the list of active Migrations for a Polkadot/Substrate runtime. The cli is mainly a an interface on top of the [`submig-lib crate`](https://crates.io/crates/submig-lib).
 
+`submig` parses the Rust code in order to find the Migrations and is thus subject to breaking if the structure of the code would happen to regarding how the Migrations are defined.
+
+This tool is provided as an experiment. You should probably not rely on it too heavily.
+
 ## Usage
 
 ### Help

@@ -48,7 +48,8 @@ jobs:
             target
           key: ${{ runner.os }}-${{ matrix.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/checkout@v3
+      - name: Check out our project
+        uses: actions/checkout@v3
 
       - name: Cargo fmt
         uses: actions-rs/cargo@v1
@@ -64,8 +65,19 @@ jobs:
           command: clippy
           args: --tests -- -D warnings
 
+      - name: Check out the Polkadot Repo
+        uses: actions/checkout@v3
+        with:
+          repository: paritytech/polkadot
+          ref: master
+          fetch-depth: 0
+          path: polkadot
+
       - name: Cargo nextest
         uses: actions-rs/cargo@v1
+        env:
+          POLKADOT_REPO: polkadot
+          # CUMULUS_REPO:
         with:
           command: nextest
           args: run
