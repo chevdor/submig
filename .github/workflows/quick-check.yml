@@ -72,6 +72,11 @@ jobs:
           ref: master
           path: polkadot
 
+      - name: Debug
+        run: |
+          pwd
+          ls -al
+
       - name: Cargo nextest
         uses: actions-rs/cargo@v1
         env:
