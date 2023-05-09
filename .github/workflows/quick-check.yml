@@ -80,9 +80,9 @@ jobs:
       - name: Cargo nextest
         uses: actions-rs/cargo@v1
         env:
-          POLKADOT_REPO: polkadot
+          POLKADOT_REPO: /home/runner/work/submig/submig/polkadot
           # TODO: Checkout Cumulus if needed
-          CUMULUS_REPO: cumulus
+          CUMULUS_REPO: /home/runner/work/submig/submig/cumulus
         with:
           command: nextest
           args: run

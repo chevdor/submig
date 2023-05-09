@@ -31,8 +31,8 @@ pub fn get_files(repo: &PathBuf) -> Result<Vec<PathBuf>> {
 			Ok(arr)
 		}
 		Err(e) => {
-			eprint!("{repo:?}");
-			eprint!("{e:?}");
+			eprintln!("repo: {repo:?}");
+			eprintln!("{e:?}");
 			todo!()
 		}
 	}
