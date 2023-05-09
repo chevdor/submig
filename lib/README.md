@@ -1,3 +1,3 @@
-# submig
+# submig-lib
 
-This project was generated using https://github.com/chevdor/cargo-templates
+This crate helps finding Polkadot Migrations. It is used in https://github.com/chevdor/submig.

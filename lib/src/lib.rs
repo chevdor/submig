@@ -1,15 +1,22 @@
-use anyhow::{bail, Result};
-use std::{fs, path::PathBuf, process::Command, str::from_utf8};
+use anyhow::Result;
+use std::{collections::HashMap, fs, path::PathBuf, process::Command, str::from_utf8};
 use syn::{
 	Ident, Item, ItemType,
 	Type::{self, Tuple},
 	TypeTuple,
 };
 
+/// Tyep alias for a Migration. This is a String.
+pub type Migration = String;
+
 /// Looking for files containing: `pub type Migrations`
+/// This command relies on having `git` installed and the
+/// passed `repo` being a valid git repository.
 pub fn get_files(repo: &PathBuf) -> Result<Vec<PathBuf>> {
+	const PATTERN: &str = "pub type Migrations";
+
 	let mut grep = Command::new("git");
-	grep.args(["grep", "--name-only", "pub type Migrations"]);
+	grep.args(["grep", "--name-only", PATTERN]);
 	let output = grep.current_dir(repo).output();
 
 	match output {
@@ -27,6 +34,7 @@ pub fn get_files(repo: &PathBuf) -> Result<Vec<PathBuf>> {
 	}
 }
 
+/// Get one migration from a Type item.
 pub fn get_migration(e: &Type) -> Option<String> {
 	match e {
 		syn::Type::Path(p) => {
@@ -38,12 +46,13 @@ pub fn get_migration(e: &Type) -> Option<String> {
 	}
 }
 
-pub fn string_from_tuple(tuple: &TypeTuple) -> Vec<String> {
-	let oo: Vec<String> = tuple.elems.iter().map(|e| get_migration(e).unwrap()).collect();
-	oo
+/// Extract all Migration from the elements of a Tuppe
+pub fn string_from_tuple(tuple: &TypeTuple) -> Vec<Migration> {
+	tuple.elems.iter().map(|e| get_migration(e).unwrap()).collect::<Vec<Migration>>()
 }
 
-pub fn get_migrations(it: &ItemType) -> Result<Vec<String>> {
+/// Get all Migrations
+pub fn get_migrations(it: &ItemType) -> Result<Vec<Migration>> {
 	let rr: Vec<String> = match &*it.ty {
 		Tuple(t) => string_from_tuple(t),
 		_ => unreachable!(),
@@ -52,22 +61,17 @@ pub fn get_migrations(it: &ItemType) -> Result<Vec<String>> {
 	Ok(rr)
 }
 
-pub fn find(repo: &PathBuf) -> Result<Vec<String>> {
+/// Find all Migrations for a given repo
+pub fn find(repo: &PathBuf) -> Result<HashMap<PathBuf, Vec<Migration>>> {
 	let files = get_files(repo)?;
+	let mut res: HashMap<PathBuf, Vec<Migration>> = HashMap::new();
 
 	for file in files {
-		println!("processing {file:?}");
 		let code = fs::read_to_string(&file)?;
 		let syntax = syn::parse_file(&code)?;
 
-		let hits: Vec<&Item> = syntax
-			.items
-			.iter()
-			.filter(|&item| match item {
-				syn::Item::Type(i) if i.ident == "Migrations" => true,
-				_ => false,
-			})
-			.collect();
+		let hits: Vec<&Item> =
+			syntax.items.iter().filter(|&item| matches!(item, syn::Item::Type(i) if i.ident == "Migrations")).collect();
 
 		assert!(hits.len() == 1);
 		let hit = hits.first().unwrap();
@@ -76,10 +80,9 @@ pub fn find(repo: &PathBuf) -> Result<Vec<String>> {
 			syn::Item::Type(it) => get_migrations(it).unwrap(),
 			_ => vec![],
 		};
-
-		return Ok(result);
+		res.insert(file, result);
 	}
-	bail!("meh");
+	Ok(res)
 }
 
 #[cfg(test)]
@@ -102,6 +105,7 @@ mod tests {
 	}
 
 	#[test]
+	#[ignore = "Migration were not updated in Cumulus yet"]
 	fn it_finds_migrations_cumulus() {
 		let result = find(&PathBuf::from(PROJECT_DIR_CUMULUS)).unwrap();
 		assert!(result.len() == 0); // The migration fix was not done yet
