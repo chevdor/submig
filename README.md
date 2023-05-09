@@ -1,6 +1,6 @@
 # submig
 
-`submig` is an experimental project aiming at finding the list of active Migrations for a Polkadot/Substrate runtime.
+`submig` is an experimental project aiming at finding the list of active Migrations for a Polkadot/Substrate runtime. The cli is mainly a an interface on top of the [`submig-lib crate`](https://crates.io/crates/submig-lib).
 
 ## Usage
 

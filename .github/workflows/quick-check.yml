@@ -20,13 +20,19 @@ jobs:
         os: ["ubuntu-latest"]
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Install Rust toolchain
+      - name: Install Rust Nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          components: clippy, rustfmt
+
+      - name: Install Rust Stable toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
-          components: clippy, rustfmt
 
       - name: Install Rust tooling
         uses: taiki-e/install-action@v1
