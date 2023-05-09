@@ -108,7 +108,7 @@ mod tests {
 	#[ignore = "Migration were not updated in Cumulus yet"]
 	fn it_finds_migrations_cumulus() {
 		let result = find(&PathBuf::from(PROJECT_DIR_CUMULUS)).unwrap();
-		assert!(result.len() == 0); // The migration fix was not done yet
+		assert!(result.is_empty()); // The migration fix was not done yet
 		println!("result = {:?}", result);
 	}
 }
