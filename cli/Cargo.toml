@@ -15,4 +15,4 @@ assert_cmd = "2.0"
 env_logger = "0.10"
 log = "0.4"
 clap = { version = "4", features = ["derive", "env", "unicode", "cargo"] }
-submig-lib = { version = "*", path = "../lib/" }
+submig-lib = { version = ">=0", path = "../lib/" }

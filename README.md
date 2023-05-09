@@ -10,6 +10,18 @@ This tool is provided as an experiment. You should probably not rely on it too h
 
 ## Usage
 
+### Install
+
+You can install from crates.io:
+```
+cargo install submig
+```
+
+Or from the repo:
+```
+cargo install --git https://github.com/chevdor/submig
+```
+
 ### Help
 ```source,bash
 submig --help
