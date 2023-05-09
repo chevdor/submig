@@ -70,14 +70,14 @@ jobs:
         with:
           repository: paritytech/polkadot
           ref: master
-          fetch-depth: 0
           path: polkadot
 
       - name: Cargo nextest
         uses: actions-rs/cargo@v1
         env:
           POLKADOT_REPO: polkadot
-          # CUMULUS_REPO:
+          # TODO: Checkout Cumulus if needed
+          CUMULUS_REPO: cumulus
         with:
           command: nextest
           args: run
