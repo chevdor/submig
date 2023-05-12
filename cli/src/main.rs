@@ -13,6 +13,8 @@ fn main() -> Result<(), String> {
 	let opts: Opts = Opts::parse();
 	debug!("opts:\n{:#?}", opts);
 
+	let mut overall_valid = true;
+
 	match opts.subcmd {
 		SubCommand::List(list_opts) => {
 			debug!("list_opts:\n{:#?}", list_opts);
@@ -20,18 +22,32 @@ fn main() -> Result<(), String> {
 			println!("Checking migrations in repo: {}", list_opts.repo.display());
 			match migrations_map {
 				Ok(hmap) => {
-					for (file, migrations) in hmap {
+					for (file, (valid, invalid)) in hmap {
 						if let Some(pattern) = &list_opts.pattern {
 							if file.display().to_string().contains(pattern) {
 								println!("{}:", file.display());
-								for migration in migrations {
-									println!("  - {migration}");
+								for migration in &valid {
+									println!("  - ✅ {migration}");
+								}
+
+								if !invalid.is_empty() {
+									overall_valid &= false
+								};
+								for migration in invalid {
+									println!("  - ❌ {migration}");
 								}
 							}
 						} else {
 							println!("{}:", file.display());
-							for migration in migrations {
-								println!("  - {migration}");
+							for migration in &valid {
+								println!("  - ✅ {migration}");
+							}
+
+							if !invalid.is_empty() {
+								overall_valid &= false
+							};
+							for migration in invalid {
+								println!("  - ❌ {migration}");
 							}
 						}
 					}
@@ -42,5 +58,9 @@ fn main() -> Result<(), String> {
 		}
 	}
 
-	Ok(())
+	if overall_valid {
+		Ok(())
+	} else {
+		Err(String::from("Some migrations are invalid"))
+	}
 }

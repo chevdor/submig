@@ -1,5 +1,8 @@
-use anyhow::Result;
+mod error;
+use error::*;
+
 use log::debug;
+use regex::Regex;
 use std::{collections::HashMap, fs, path::PathBuf, process::Command, str::from_utf8};
 use syn::{
 	Ident, Item, ItemType,
@@ -40,40 +43,70 @@ pub fn get_files(repo: &PathBuf) -> Result<Vec<PathBuf>> {
 }
 
 /// Get one migration from a Type item.
-pub fn get_migration(e: &Type) -> Option<String> {
+fn get_migration(e: &Type) -> Result<Option<String>> {
 	match e {
 		syn::Type::Path(p) => {
-			let segment = p.path.segments.iter().nth(1).unwrap();
-			let xx = &(segment.ident.clone() as Ident);
-			Some(xx.to_string())
+			let segment = p.path.segments.iter().nth(1).ok_or(SubmigError::NonStandard)?;
+			let ident = &(segment.ident.clone() as Ident);
+			Ok(Some(ident.to_string()))
 		}
-		_ => None,
+		_ => Err(SubmigError::NonStandard),
 	}
 }
 
 /// Extract all Migration from the elements of a Tuppe
-pub fn string_from_tuple(tuple: &TypeTuple) -> Vec<Migration> {
-	tuple.elems.iter().map(|e| get_migration(e).unwrap()).collect::<Vec<Migration>>()
+fn string_from_tuple(tuple: &TypeTuple) -> Result<Vec<Migration>> {
+	let mig = tuple.elems.iter().map(|e| match get_migration(e) {
+		Ok(m) => Ok(m),
+		Err(e) => Err(e),
+	});
+	let no_error = mig.clone().map(|i| i.is_ok()).all(|x| x);
+	if no_error {
+		let vec = mig.map(|i| i.unwrap().unwrap()).collect::<Vec<Migration>>();
+		Ok(vec)
+	} else {
+		Err(SubmigError::NonStandard)
+	}
 }
 
 /// Get all Migrations
-pub fn get_migrations(it: &ItemType) -> Result<Vec<Migration>> {
-	let rr: Vec<String> = match &*it.ty {
-		Tuple(t) => string_from_tuple(t),
+fn get_migrations(it: &ItemType) -> Result<Vec<Migration>> {
+	let migrations: Vec<String> = match &*it.ty {
+		Tuple(t) => string_from_tuple(t)?,
 		_ => unreachable!(),
 	};
-
-	Ok(rr)
+	debug!("Migrations: {migrations:?}");
+	Ok(migrations)
 }
 
+/// We expect all migrations to be either:
+/// `VXXXX` or `Unreleased`.
+/// Returns the valid and invalid migrations.
+fn check_naming(migrations: Vec<Migration>) -> (Vec<Migration>, Vec<Migration>) {
+	let version_regexp = Regex::new(r"^V\d{4}$").unwrap();
+
+	let valid =
+		migrations.iter().filter(|m| m == &"Unreleased" || version_regexp.is_match(m)).map(|s| s.to_string()).collect();
+	let invalid = migrations
+		.iter()
+		.filter(|m| m != &"Unreleased" && !version_regexp.is_match(m))
+		.map(|s| s.to_string())
+		.collect();
+	(valid, invalid)
+}
+
+type SearchResult = HashMap<PathBuf, (Vec<Migration>, Vec<Migration>)>;
+
 /// Find all Migrations for a given repo
-pub fn find(repo: &PathBuf) -> Result<HashMap<PathBuf, Vec<Migration>>> {
+/// It returns a Hashmap per file with a tuple made of the Vec of valid and invalid migrations
+/// based on the naming.
+pub fn find(repo: &PathBuf) -> Result<SearchResult> {
 	let files = get_files(repo)?;
-	let mut res: HashMap<PathBuf, Vec<Migration>> = HashMap::new();
+	let mut res: SearchResult = HashMap::new();
 
 	for file in files {
-		let code = fs::read_to_string(&file)?;
-		let syntax = syn::parse_file(&code)?;
+		let code = fs::read_to_string(&file).map_err(|_e| SubmigError::IO)?;
+		let syntax = syn::parse_file(&code).map_err(|_| SubmigError::Parsing)?;
 
 		let hits: Vec<&Item> =
 			syntax.items.iter().filter(|&item| matches!(item, syn::Item::Type(i) if i.ident == "Migrations")).collect();
@@ -82,11 +115,14 @@ pub fn find(repo: &PathBuf) -> Result<HashMap<PathBuf, Vec<Migration>>> {
 		assert!(hits.len() == 1);
 		let hit = hits.first().unwrap();
 
-		let result: Vec<String> = match hit {
-			syn::Item::Type(it) => get_migrations(it).unwrap(),
+		let migrations: Vec<Migration> = match hit {
+			syn::Item::Type(it) => get_migrations(it)?,
 			_ => vec![],
 		};
-		res.insert(file, result);
+
+		let (valid, invalid) = check_naming(migrations);
+
+		res.insert(file, (valid, invalid));
 	}
 	Ok(res)
 }
