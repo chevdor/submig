@@ -7,7 +7,7 @@ use std::path::PathBuf;
 #[clap(version = crate_version!(), author = crate_authors!())]
 pub struct Opts {
 	#[clap(subcommand)]
-	pub subcmd: SubCommand,
+	pub subcmd: Option<SubCommand>,
 }
 
 /// You can find all available commands below.

@@ -1,10 +1,12 @@
+mod commands;
 mod opts;
 
+use crate::commands::*;
 use clap::{crate_name, crate_version, Parser};
 use env_logger::Env;
 use log::{debug, info};
 use opts::*;
-use std::string::String;
+use std::{path::PathBuf, string::String};
 
 fn main() -> Result<(), String> {
 	env_logger::Builder::from_env(Env::default().default_filter_or("none")).init();
@@ -13,50 +15,19 @@ fn main() -> Result<(), String> {
 	let opts: Opts = Opts::parse();
 	debug!("opts:\n{:#?}", opts);
 
-	let mut overall_valid = true;
-
-	match opts.subcmd {
-		SubCommand::List(list_opts) => {
-			debug!("list_opts:\n{:#?}", list_opts);
-			let migrations_map = submig_lib::find(&list_opts.repo);
-			println!("Checking migrations in repo: {}", list_opts.repo.display());
-			match migrations_map {
-				Ok(hmap) => {
-					for (file, (valid, invalid)) in hmap {
-						if let Some(pattern) = &list_opts.pattern {
-							if file.display().to_string().contains(pattern) {
-								println!("{}:", file.display());
-								for migration in &valid {
-									println!("  - ✅ {migration}");
-								}
-
-								if !invalid.is_empty() {
-									overall_valid &= false
-								};
-								for migration in invalid {
-									println!("  - ❌ {migration}");
-								}
-							}
-						} else {
-							println!("{}:", file.display());
-							for migration in &valid {
-								println!("  - ✅ {migration}");
-							}
-
-							if !invalid.is_empty() {
-								overall_valid &= false
-							};
-							for migration in invalid {
-								println!("  - ❌ {migration}");
-							}
-						}
-					}
-					println!();
-				}
-				Err(e) => eprint!("An error occured: {e:?}"),
-			}
+	let overall_valid = match opts.subcmd {
+		// If no command is passed, we use list and hope that the REPO ENV is set
+		None => {
+			let repo =
+				std::env::var("REPO_POLKADOT").expect("If you pass no command, the REPO_POLKADOT ENV must be defined.");
+			list_migrations(&PathBuf::from(repo), None).unwrap()
 		}
-	}
+
+		Some(SubCommand::List(list_opts)) => {
+			debug!("list_opts:\n{:#?}", list_opts);
+			list_migrations(&list_opts.repo, list_opts.pattern).unwrap()
+		}
+	};
 
 	if overall_valid {
 		Ok(())

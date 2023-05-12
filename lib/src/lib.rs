@@ -1,5 +1,5 @@
 mod error;
-use error::*;
+pub use error::*;
 
 use log::debug;
 use regex::Regex;
@@ -111,7 +111,7 @@ pub fn find(repo: &PathBuf) -> Result<SearchResult> {
 		let hits: Vec<&Item> =
 			syntax.items.iter().filter(|&item| matches!(item, syn::Item::Type(i) if i.ident == "Migrations")).collect();
 
-		debug!("Found {} hits", hits.len());
+		debug!("Found {} Migration hits", hits.len());
 		assert!(hits.len() == 1);
 		let hit = hits.first().unwrap();
 
