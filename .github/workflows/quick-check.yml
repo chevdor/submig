@@ -68,7 +68,7 @@ jobs:
       - name: Check out the Polkadot Repo
         uses: actions/checkout@v3
         with:
-          repository: paritytech/polkadot
+          repository: paritytech/polkadot-sdk
           ref: master
           path: polkadot
 
@@ -80,9 +80,7 @@ jobs:
       - name: Cargo nextest
         uses: actions-rs/cargo@v1
         env:
-          POLKADOT_REPO: /home/runner/work/submig/submig/polkadot
-          # TODO: Checkout Cumulus if needed
-          CUMULUS_REPO: /home/runner/work/submig/submig/cumulus
+          REPO_POLKADOT: /home/runner/work/submig/submig/polkadot-sdk
         with:
           command: nextest
           args: run

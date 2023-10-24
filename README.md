@@ -33,7 +33,7 @@ submig --help
 submig list /path/to/repo
 ```
 
-Alternatively, if you defined the `POLKADOT_REPO` ENV in your system, you can simply call:
+Alternatively, if you defined the `REPO_POLKADOT` ENV in your system, you can simply call:
 ```source,bash
 submig list
 ```
