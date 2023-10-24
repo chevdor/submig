@@ -20,12 +20,16 @@ fn main() -> Result<(), String> {
 		None => {
 			let repo =
 				std::env::var("REPO_POLKADOT").expect("If you pass no command, the REPO_POLKADOT ENV must be defined.");
-			list_migrations(&PathBuf::from(repo), &PathBuf::from("polkadot"), None).unwrap()
+			list_migrations(&PathBuf::from(repo),
+			// &PathBuf::from("polkadot"),
+			None).unwrap()
 		}
 
 		Some(SubCommand::List(list_opts)) => {
 			debug!("list_opts:\n{:#?}", list_opts);
-			list_migrations(&list_opts.repo, &list_opts.sub_folder, list_opts.pattern).unwrap()
+			list_migrations(&list_opts.repo,
+				// &list_opts.sub_folder,
+				list_opts.pattern).unwrap()
 		}
 	};
 

@@ -3,11 +3,10 @@ pub use error::*;
 
 use log::debug;
 use regex::Regex;
-use std::{collections::HashMap, fs, path::PathBuf, process::Command, str::from_utf8, fmt::Display};
+use std::{collections::HashMap, fmt::Display, fs, path::PathBuf, process::Command, str::from_utf8};
 use syn::{
-	Ident, Item, ItemType,
-	Type::{self, Tuple},
-	TypeTuple,
+	Ident, Item,
+	Type::{self, Path, Tuple},
 };
 
 /// Tyep alias for a Migration. This is a String.
@@ -18,24 +17,28 @@ pub enum Migration {
 }
 
 impl Display for Migration {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            Migration::Ok(s) => s.to_string(),
-            Migration::NotOk() => "err".to_string(),
-        };
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let s = match self {
+			Migration::Ok(s) => s.to_string(),
+			Migration::NotOk() => "err".to_string(),
+		};
 		f.write_str(&s)
-    }
+	}
 }
 
 /// Looking for files containing: `pub type Migrations`
 /// This command relies on having `git` installed and the
 /// passed `repo` being a valid git repository.
-pub fn get_files(repo: &PathBuf, folder: &PathBuf) -> Result<Vec<PathBuf>> {
+pub fn get_files(
+	repo: &PathBuf,
+	// folder: &PathBuf
+) -> Result<Vec<PathBuf>> {
 	const PATTERN: &str = "pub type Migrations";
 
 	let mut grep = Command::new("git");
 	grep.args(["grep", "--name-only", PATTERN]);
-	let output = grep.current_dir(repo.join(folder)).output();
+	// let output = grep.current_dir(repo.join(folder)).output();
+	let output = grep.current_dir(repo).output();
 
 	match output {
 		Ok(o) => {
@@ -44,7 +47,8 @@ pub fn get_files(repo: &PathBuf, folder: &PathBuf) -> Result<Vec<PathBuf>> {
 				.split(|c| c == &10)
 				.map(|a| from_utf8(a).unwrap())
 				.filter(|s| !s.is_empty())
-				.map(|s| PathBuf::from(repo).join(folder).join(PathBuf::from(s)))
+				// .map(|s| PathBuf::from(repo).join(folder).join(PathBuf::from(s)))
+				.map(|s| PathBuf::from(repo).join(PathBuf::from(s)))
 				.collect();
 			Ok(arr)
 		}
@@ -57,59 +61,41 @@ pub fn get_files(repo: &PathBuf, folder: &PathBuf) -> Result<Vec<PathBuf>> {
 }
 
 /// Get one migration from a Type item.
-fn get_migration(e: &Type) -> Result<Option<Migration>> {
-	match e {
-		syn::Type::Path(p) => {
+fn get_migration(t: &Type) -> Result<Option<Migration>> {
+	match t {
+		Path(p) => {
 			let segment = p.path.segments.iter().nth(1).ok_or(SubmigError::NonStandard)?;
 			let ident = &(segment.ident.clone() as Ident);
 			Ok(Some(Migration::Ok(ident.to_string())))
 		}
-		_ => Err(SubmigError::NonStandard),
+		Tuple(t) => {
+			log::debug!("tuple: nb elems: {}", t.elems.len());
+			let content: &Type = t.elems.first().ok_or(SubmigError::NonStandard)?;
+			get_migrations(content)
+			// t.elems.iter().flat_map(|e| get_migration(e)).collect()
+
+
+		}
+		Type::Paren(p) => {
+			log::debug!("{p:?}");
+			let content = p.elem.clone();
+			get_migration(content.as_ref())
+		}
+		x => {
+			log::warn!("Non standard: {x:?})");
+			Err(SubmigError::NonStandard)
+		}
 	}
 }
-
-/// Extract all Migration from the elements of a Tuppe
-fn string_from_tuple(tuple: &TypeTuple) -> Result<Vec<Migration>> {
-	log::debug!("tuple: {tuple:?}");
-
-	let mig = tuple.elems.iter().map(|e| match get_migration(e) {
-		Ok(m) => Ok(m),
-		Err(e) => Err(e),
-	});
-	let no_error = mig.clone().map(|i| i.is_ok()).all(|x| x);
-	if no_error {
-		let vec = mig.map(|i| i.unwrap().unwrap()).collect::<Vec<Migration>>();
-		Ok(vec)
-	} else {
-		Err(SubmigError::NonStandard)
-	}
-}
-
-
-// fn string_from_path(p: &syn::TypePath) -> Vec<String> {
-// 	log::debug!("path: {p:?}");
-//     vec!["todo".into()]
-// }
-
 /// Get all Migrations
-fn get_migrations(it: &ItemType) -> Result<Vec<Migration>> {
-	let migrations: Vec<Migration> = match &*it.ty {
-		Tuple(t) => string_from_tuple(t)?,
-		// Type::Path(p) => {
-		// 	log::info!("Path: {p:?}");
-		// 	// get_migrations(p.qself).unwrap_or_default()
-		// 	string_from_path(p)
-		// }
-		// x => {
-
-		// 	log::error!("Unexpected type/format: {x:?}");
-		// 	unreachable!()
-		// }
+fn get_migrations(it: &Item) -> Result<Vec<Migration>> {
+	let migrations: Vec<Migration> = match it {
+		Item::Type(t) => vec![get_migration(&*t.ty).unwrap().unwrap()],
+		_ => unreachable!(),
 	};
 	debug!("Migrations: {migrations:?}");
 	Ok(migrations)
 }
-
 
 /// We expect all migrations to be either:
 /// `VXXXX` or `Unreleased`.
@@ -117,8 +103,11 @@ fn get_migrations(it: &ItemType) -> Result<Vec<Migration>> {
 fn check_naming(migrations: Vec<Migration>) -> (Vec<Migration>, Vec<Migration>) {
 	let version_regexp = Regex::new(r"^V\d{4}$").unwrap();
 
-	let valid =
-		migrations.iter().filter(|m| m.to_string() == "Unreleased" || version_regexp.is_match(&m.to_string())).map(|s| s.clone()).collect();
+	let valid = migrations
+		.iter()
+		.filter(|m| m.to_string() == "Unreleased" || version_regexp.is_match(&m.to_string()))
+		.map(|s| s.clone())
+		.collect();
 	let invalid = migrations
 		.iter()
 		.filter(|m| m.to_string() != "Unreleased" && !version_regexp.is_match(&m.to_string()))
@@ -132,8 +121,14 @@ type SearchResult = HashMap<PathBuf, (Vec<Migration>, Vec<Migration>)>;
 /// Find all Migrations for a given repo
 /// It returns a Hashmap per file with a tuple made of the Vec of valid and invalid migrations
 /// based on the naming.
-pub fn find(repo: &PathBuf, folder: &PathBuf) -> Result<SearchResult> {
-	let files = get_files(repo, folder)?;
+pub fn find(
+	repo: &PathBuf,
+	// folder: &PathBuf
+) -> Result<SearchResult> {
+	let files = get_files(
+		repo,
+		// folder
+	)?;
 	let mut res: SearchResult = HashMap::new();
 
 	for file in files {
@@ -144,17 +139,16 @@ pub fn find(repo: &PathBuf, folder: &PathBuf) -> Result<SearchResult> {
 			syntax.items.iter().filter(|&item| matches!(item, syn::Item::Type(i) if i.ident == "Migrations")).collect();
 
 		debug!("Found {} Migration hits in {}", hits.len(), file.display());
-		assert!(hits.len() == 1);
-		let hit = hits.first().unwrap();
+		match hits.first() {
+			Some(hit) => {
+				let migrations: Vec<Migration> = get_migrations(hit)?;
 
-		let migrations: Vec<Migration> = match hit {
-			syn::Item::Type(it) => get_migrations(it)?,
-			_ => vec![],
-		};
+				let (valid, invalid) = check_naming(migrations);
 
-		let (valid, invalid) = check_naming(migrations);
-
-		res.insert(file, (valid, invalid));
+				res.insert(file, (valid, invalid));
+			}
+			None => {}
+		}
 	}
 	Ok(res)
 }

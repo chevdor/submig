@@ -24,8 +24,8 @@ pub struct ListOpts {
 	#[clap(index = 1, env = "REPO_POLKADOT")]
 	pub repo: PathBuf,
 
-	#[clap(index = 2)]
-	pub sub_folder: PathBuf,
+	// #[clap(index = 2)]
+	// pub sub_folder: PathBuf,
 
 	/// Optional pattern to filter output
 	#[clap(long, short, alias = "grep")]
