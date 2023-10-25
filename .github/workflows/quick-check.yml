@@ -70,7 +70,7 @@ jobs:
         with:
           repository: paritytech/polkadot-sdk
           ref: master
-          path: polkadot
+          path: polkadot-sdk
 
       - name: Check out the Fellowship Runtimes Repo
         uses: actions/checkout@v3
