@@ -65,12 +65,19 @@ jobs:
           command: clippy
           args: --tests -- -D warnings
 
-      - name: Check out the Polkadot Repo
+      - name: Check out the Polkadot SDK Repo
         uses: actions/checkout@v3
         with:
           repository: paritytech/polkadot-sdk
           ref: master
           path: polkadot
+
+      - name: Check out the Fellowship Runtimes Repo
+        uses: actions/checkout@v3
+        with:
+          repository: polkadot-fellows/runtimes
+          ref: master
+          path: fellowship-runtimes
 
       - name: Debug
         run: |
@@ -81,6 +88,7 @@ jobs:
         uses: actions-rs/cargo@v1
         env:
           REPO_POLKADOT_SDK: /home/runner/work/submig/submig/polkadot-sdk
+          REPO_FELLOWSHIP_RUNTIMES: /home/runner/work/submig/submig/fellowship-runtimes
         with:
           command: nextest
           args: run
