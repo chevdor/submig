@@ -1,17 +1,10 @@
+[workspace.package]
+authors = ["Chevdor <chevdor@gmail.com>"]
+version = "0.0.2"
+edition = "2021"
+
 [workspace]
 resolver = "2"
-
-# authors = ["Chevdor <chevdor@gmail.com>"]
-# name = "submig"
-# version = "0.0.0"
-# edition = "2021"
-# description = "submig is a cli"
-# homepage = "https://github.com/Chevdor/submig"
-# keywords = ["Chevdor"]
-# license = "MIT"
-# readme = "README.md"
-# repository = "https://github.com/Chevdor/submig"
-
 members = [
     "cli",
     "lib",
