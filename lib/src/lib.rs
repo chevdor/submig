@@ -116,7 +116,7 @@ fn get_migrations(it: &Item) -> Result<Vec<Migration>> {
 /// `VXXXX` or `Unreleased`.
 /// Returns the valid and invalid migrations.
 fn check_naming(migrations: Vec<Migration>) -> (Vec<Migration>, Vec<Migration>) {
-	let version_regexp = Regex::new(r"^V\d{4}$").unwrap();
+	let version_regexp = Regex::new(r"^V.*$").unwrap();
 
 	let valid = migrations
 		.iter()
