@@ -2,7 +2,7 @@ use clap::{crate_authors, crate_version, Parser, Subcommand};
 use std::env;
 use std::path::PathBuf;
 
-/// Experiemtnal command line utility to find polkadot Migrations
+/// Experimental command line utility to find polkadot Migrations
 #[derive(Debug, Parser)]
 #[clap(version = crate_version!(), author = crate_authors!())]
 pub struct Opts {
@@ -21,9 +21,11 @@ pub enum SubCommand {
 #[derive(Parser, Debug)]
 pub struct ListOpts {
 	/// The path of your repo
-	#[clap(index = 1, env = "REPO_POLKADOT")]
+	#[clap(index = 1, env = "REPO_POLKADOT_SDK")]
 	pub repo: PathBuf,
 
+	// #[clap(index = 2)]
+	// pub sub_folder: PathBuf,
 	/// Optional pattern to filter output
 	#[clap(long, short, alias = "grep")]
 	pub pattern: Option<String>,

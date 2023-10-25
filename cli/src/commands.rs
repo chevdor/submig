@@ -1,12 +1,20 @@
 use std::path::PathBuf;
 
-pub fn list_migrations(repo: &PathBuf, pattern: Option<String>) -> submig_lib::Result<bool> {
-	let migrations_map = submig_lib::find(repo);
-	println!("Checking migrations in repo: {}", repo.display());
+pub fn list_migrations(
+	repo: &PathBuf,
+	// folder: &PathBuf,
+	pattern: Option<String>,
+) -> submig_lib::Result<bool> {
+	let migrations_map = submig_lib::find(
+		repo, // , folder
+	);
+	// println!("Checking migrations in repo: {} under {}", repo.display(), folder.display());
+	println!("Checking migrations in repo: {} ", repo.display());
 	let mut overall_valid = true;
 	match migrations_map {
 		Ok(hmap) => {
 			for (file, (valid, invalid)) in hmap {
+				log::debug!("Checking: {}", file.display());
 				if let Some(pattern) = &pattern {
 					if file.display().to_string().contains(pattern) {
 						println!("{}:", file.display());

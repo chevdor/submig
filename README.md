@@ -7,6 +7,53 @@
 `submig` parses the Rust code in order to find the Migrations and is thus subject to breaking if the structure of the code would happen to regarding how the Migrations are defined.
 
 This tool is provided as an experiment. You should probably not rely on it too heavily.
+The rules related to what makes a Migration "valid" are also very opinionated and may not suit every project.
+
+## Rules
+
+Since migrations need to be managed in a rolling manner (ie added and removed over time), having a simple list of
+migrations such as the following is not ideal:
+
+```
+/// Migrations to apply on runtime upgrade.
+pub type Migrations = (
+	// v9420
+	pallet_nfts::migration::v1::MigrateToV1<Runtime>,
+	// unreleased
+	pallet_collator_selection::migration::v1::MigrateToV1<Runtime>,
+	// unreleased
+	migrations::NativeAssetParents0ToParents1Migration<Runtime>,
+	// unreleased
+	pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
+	// unreleased
+	InitStorageVersions,
+);
+```
+
+Instead, the following makes it much easier to track migrations down through each release:
+```
+pub type Migrations = (
+  migrations::Unreleased,
+  migrations::V9430,
+  migrations::V9420,
+);
+```
+
+Say the next release is V9440, the current `migrations::Unreleased` can be renamed to `migrations::V9440` and added to
+the list while a new empty tuple can now be created to hold the future migrations: `pub type migrations::Unreleased =
+()`.
+
+The new migration plan becomes:
+```
+pub type Migrations = (
+  migrations::Unreleased,
+  migrations::V9430,
+  migrations::V9440,
+  migrations::V9420,
+);
+```
+
+and it becomes easy now to remove all the `migrations::V9420` migrations after N releases.
 
 ## Usage
 
@@ -33,7 +80,7 @@ submig --help
 submig list /path/to/repo
 ```
 
-Alternatively, if you defined the `POLKADOT_REPO` ENV in your system, you can simply call:
+Alternatively, if you defined the `REPO_POLKADOT_SDK` ENV in your system, you can simply call:
 ```source,bash
 submig list
 ```
