@@ -26,6 +26,12 @@ impl Display for Migration {
 	}
 }
 
+impl From<&str> for Migration {
+	fn from(s: &str) -> Self {
+		Migration::Ok(s.to_string())
+	}
+}
+
 /// Looking for files containing: `pub type Migrations`
 /// This command relies on having `git` installed and the
 /// passed `repo` being a valid git repository.
@@ -61,20 +67,27 @@ pub fn get_files(
 }
 
 /// Get one migration from a Type item.
-fn get_migration(t: &Type) -> Result<Option<Migration>> {
+/// It returns a Vec of Migrations, assuming they follow the expected naming
+fn get_migration(t: &Type) -> Result<Vec<Migration>> {
 	match t {
 		Path(p) => {
+			// If the naming changes and we need to hanle the full segment:
+			// let segment: String = p.path.segments.iter().map(|s| {
+			// 	s.ident.to_string()
+			// }).collect();
+			// // todo: handle separators
+			// Ok(vec![Migration::Ok(segment)])
+
 			let segment = p.path.segments.iter().nth(1).ok_or(SubmigError::NonStandard)?;
 			let ident = &(segment.ident.clone() as Ident);
-			Ok(Some(Migration::Ok(ident.to_string())))
+			Ok(vec![(Migration::Ok(ident.to_string()))])
 		}
 		Tuple(t) => {
 			log::debug!("tuple: nb elems: {}", t.elems.len());
-			let content: &Type = t.elems.first().ok_or(SubmigError::NonStandard)?;
-			get_migrations(content)
-			// t.elems.iter().flat_map(|e| get_migration(e)).collect()
 
+			let content = t.elems.iter().flat_map(get_migration).flatten().collect();
 
+			Ok(content)
 		}
 		Type::Paren(p) => {
 			log::debug!("{p:?}");
@@ -89,8 +102,10 @@ fn get_migration(t: &Type) -> Result<Option<Migration>> {
 }
 /// Get all Migrations
 fn get_migrations(it: &Item) -> Result<Vec<Migration>> {
+	log::debug!("get_migrations");
+
 	let migrations: Vec<Migration> = match it {
-		Item::Type(t) => vec![get_migration(&*t.ty).unwrap().unwrap()],
+		Item::Type(t) => get_migration(&t.ty).unwrap(),
 		_ => unreachable!(),
 	};
 	debug!("Migrations: {migrations:?}");
@@ -106,12 +121,12 @@ fn check_naming(migrations: Vec<Migration>) -> (Vec<Migration>, Vec<Migration>) 
 	let valid = migrations
 		.iter()
 		.filter(|m| m.to_string() == "Unreleased" || version_regexp.is_match(&m.to_string()))
-		.map(|s| s.clone())
+		.cloned()
 		.collect();
 	let invalid = migrations
 		.iter()
 		.filter(|m| m.to_string() != "Unreleased" && !version_regexp.is_match(&m.to_string()))
-		.map(|s| s.clone())
+		.cloned()
 		.collect();
 	(valid, invalid)
 }
@@ -139,15 +154,10 @@ pub fn find(
 			syntax.items.iter().filter(|&item| matches!(item, syn::Item::Type(i) if i.ident == "Migrations")).collect();
 
 		debug!("Found {} Migration hits in {}", hits.len(), file.display());
-		match hits.first() {
-			Some(hit) => {
-				let migrations: Vec<Migration> = get_migrations(hit)?;
-
-				let (valid, invalid) = check_naming(migrations);
-
-				res.insert(file, (valid, invalid));
-			}
-			None => {}
+		if let Some(hit) = hits.first() {
+			let migrations: Vec<Migration> = get_migrations(hit)?;
+			let (valid, invalid) = check_naming(migrations);
+			res.insert(file, (valid, invalid));
 		}
 	}
 	Ok(res)
@@ -159,41 +169,40 @@ mod tests {
 	use std::env;
 
 	fn setup() {
-		let polkadot_repo: &str = &env::var("REPO_POLKADOT").unwrap_or_default();
-		if polkadot_repo.is_empty() {
-			env::set_var("REPO_POLKADOT", "/projects/polkadot-sdk");
+		let repo_polkadot_sdk: &str = &env::var("REPO_POLKADOT_SDK").unwrap_or_default();
+		if repo_polkadot_sdk.is_empty() {
+			env::set_var("REPO_POLKADOT_SDK", "/projects/polkadot-sdk");
 		}
 
-		let cumulus_repo: &str = &env::var("REPO_CUMULUS").unwrap_or_default();
-		if cumulus_repo.is_empty() {
-			env::set_var("REPO_CUMULUS", "/projects/polkadot-sdk");
+		let repo_fellowship_runtimes: &str = &env::var("REPO_FELLOWSHIP_RUNTIMES").unwrap_or_default();
+		if repo_fellowship_runtimes.is_empty() {
+			env::set_var("REPO_FELLOWSHIP_RUNTIMES", "/projects/fellowship-runtimes");
 		}
 	}
 
 	#[test]
 	fn it_find_files() {
 		setup();
-		let polkadot_repo: &str = &env::var("REPO_POLKADOT").unwrap();
-		let result = get_files(&PathBuf::from(polkadot_repo), &PathBuf::from("polkadot")).unwrap();
-		assert!(result.len() == 4);
+		let polkadot_repo: &str = &env::var("REPO_POLKADOT_SDK").unwrap();
+		let result = get_files(&PathBuf::from(polkadot_repo)).unwrap();
+		assert_eq!(12, result.len());
 	}
 
 	#[test]
-	fn it_finds_migrations_polkadot() {
+	fn it_finds_migrations_polkadot_sdk() {
 		setup();
-		let polkadot_repo: &str = &env::var("REPO_POLKADOT").unwrap();
-		let result = find(&PathBuf::from(polkadot_repo), &PathBuf::from("polkadot")).unwrap();
-		assert!(result.len() == 4);
+		let polkadot_repo: &str = &env::var("REPO_POLKADOT_SDK").unwrap();
+		let result = find(&PathBuf::from(polkadot_repo)).unwrap();
+		assert_eq!(11, result.len());
 		println!("result = {:?}", result);
 	}
 
 	#[test]
-	#[ignore = "Migration were not updated in Cumulus yet"]
-	fn it_finds_migrations_cumulus() {
+	fn it_finds_migrations_fellowship_runtimes() {
 		setup();
-		let cumulus_repo: &str = &env::var("REPO_CUMULUS").unwrap();
-		let result = find(&PathBuf::from(cumulus_repo), &PathBuf::from("cumulus")).unwrap();
-		assert!(result.is_empty()); // The migration fix was not done yet
+		let polkadot_repo: &str = &env::var("REPO_FELLOWSHIP_RUNTIMES").unwrap();
+		let result = find(&PathBuf::from(polkadot_repo)).unwrap();
+		assert_eq!(6, result.len());
 		println!("result = {:?}", result);
 	}
 }

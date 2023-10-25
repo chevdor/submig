@@ -80,7 +80,7 @@ jobs:
       - name: Cargo nextest
         uses: actions-rs/cargo@v1
         env:
-          REPO_POLKADOT: /home/runner/work/submig/submig/polkadot-sdk
+          REPO_POLKADOT_SDK: /home/runner/work/submig/submig/polkadot-sdk
         with:
           command: nextest
           args: run

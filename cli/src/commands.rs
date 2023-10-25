@@ -1,10 +1,12 @@
 use std::path::PathBuf;
 
-pub fn list_migrations(repo: &PathBuf,
+pub fn list_migrations(
+	repo: &PathBuf,
 	// folder: &PathBuf,
-	pattern: Option<String>) -> submig_lib::Result<bool> {
-	let migrations_map = submig_lib::find(repo
-		// , folder
+	pattern: Option<String>,
+) -> submig_lib::Result<bool> {
+	let migrations_map = submig_lib::find(
+		repo, // , folder
 	);
 	// println!("Checking migrations in repo: {} under {}", repo.display(), folder.display());
 	println!("Checking migrations in repo: {} ", repo.display());
