@@ -185,7 +185,7 @@ mod tests {
 		setup();
 		let polkadot_repo: &str = &env::var("REPO_POLKADOT_SDK").unwrap();
 		let result = get_files(&PathBuf::from(polkadot_repo)).unwrap();
-		assert_eq!(12, result.len());
+		assert_eq!(13, result.len());
 	}
 
 	#[test]
@@ -193,7 +193,7 @@ mod tests {
 		setup();
 		let polkadot_repo: &str = &env::var("REPO_POLKADOT_SDK").unwrap();
 		let result = find(&PathBuf::from(polkadot_repo)).unwrap();
-		assert_eq!(11, result.len());
+		assert_eq!(12, result.len());
 		println!("result = {:?}", result);
 	}
 
