@@ -14,7 +14,7 @@ repository = "https://github.com/Chevdor/submig"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-log = "0.4"
-thiserror = "1.0"
-syn = { version = "2.0", features = ["parsing", "full", "extra-traits"] }
+log = "0.4.25"
+thiserror = "2.0.11"
+syn = { version = "2.0.98", features = ["parsing", "full", "extra-traits"] }
 regex = "1.8.1"
